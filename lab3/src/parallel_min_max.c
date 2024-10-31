@@ -16,6 +16,9 @@
 #include "find_min_max.h"
 #include "utils.h"
 
+int* child_pids;
+int pnum = -1;
+
 void kill_children(int signum) {
   printf("Timeout reached! Killing all children process.\n");
   for (int i = 0; i < pnum; i++)
@@ -27,7 +30,8 @@ void kill_children(int signum) {
 int main(int argc, char **argv) {
   int seed = -1;
   int array_size = -1;
-  int pnum = -1;
+  //int pnum = -1;
+  int timeout = 0;
   bool with_files = false;
 
   while (true) {
@@ -36,6 +40,7 @@ int main(int argc, char **argv) {
     static struct option options[] = {{"seed", required_argument, 0, 0},
                                       {"array_size", required_argument, 0, 0},
                                       {"pnum", required_argument, 0, 0},
+                                      {"timeout", required_argument, 0, 0},
                                       {"by_files", no_argument, 0, 'f'},
                                       {0, 0, 0, 0}};
 
@@ -75,6 +80,12 @@ int main(int argc, char **argv) {
             // error handling
             break;
           case 3:
+            timeout = atoi(optarg);
+            if (timeout < 0) {
+              printf("Timeout must be a non-negative number\n");
+              return 1;
+            }
+          case 4:
             with_files = true;
             break;
 
@@ -100,7 +111,7 @@ int main(int argc, char **argv) {
   }
 
   if (seed == -1 || array_size == -1 || pnum == -1) {
-    printf("Usage: %s --seed \"num\" --array_size \"num\" --pnum \"num\" \n",
+    printf("Usage: %s --seed \"num\" --array_size \"num\" --pnum \"num\" --timeout \"num\"\n",
            argv[0]);
     return 1;
   }
@@ -117,10 +128,16 @@ int main(int argc, char **argv) {
     }
   }
 
+  child_pids = (int*)malloc(sizeof(int) * pnum);
   int segment_size = array_size / pnum;
 
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
+
+  if (timeout > 0) {
+    signal(SIGALRM, kill_children);
+    alarm(timeout);
+  }
 
   for (int i = 0; i < pnum; i++) {
     pid_t child_pid = fork();
@@ -153,6 +170,9 @@ int main(int argc, char **argv) {
           exit(0);
         }
         return 0;
+      }
+      else {
+        child_pids[i] = child_pid;
       }
 
     } else {
@@ -207,6 +227,7 @@ int main(int argc, char **argv) {
   elapsed_time += (finish_time.tv_usec - start_time.tv_usec) / 1000.0;
 
   free(array);
+  free(child_pids);
 
   printf("Min: %d\n", min_max.min);
   printf("Max: %d\n", min_max.max);
