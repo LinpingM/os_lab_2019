@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <sys/time.h>
 #include <sys/types.h>
@@ -14,6 +15,14 @@
 
 #include "find_min_max.h"
 #include "utils.h"
+
+void kill_children(int signum) {
+  printf("Timeout reached! Killing all children process.\n");
+  for (int i = 0; i < pnum; i++)
+    kill(child_pids[i], SIGKILL);
+  free(child_pids);
+  exit(1);
+}
 
 int main(int argc, char **argv) {
   int seed = -1;
@@ -154,7 +163,7 @@ int main(int argc, char **argv) {
 
   while (active_child_processes > 0) {
     // your code here
-
+    wait(NULL);
     active_child_processes -= 1;
   }
 
