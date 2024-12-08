@@ -7,16 +7,17 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define BUFSIZE 100
 #define SADDR struct sockaddr
-#define SIZE sizeof(struct sockaddr_in)
 
 int main(int argc, char *argv[]) {
   int fd;
   int nread;
-  char buf[BUFSIZE];
+  int bufsize = atoi(argv[3]);
+  int size = atoi(argv[4]);
+  char *buf = malloc(bufsize);
   struct sockaddr_in servaddr;
-  if (argc < 3) {
+
+  if (argc < 5) {
     printf("Too few arguments \n");
     exit(1);
   }
@@ -26,23 +27,21 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  memset(&servaddr, 0, SIZE);
+  memset(&servaddr, 0, size);
   servaddr.sin_family = AF_INET;
-
   if (inet_pton(AF_INET, argv[1], &servaddr.sin_addr) <= 0) {
     perror("bad address");
     exit(1);
   }
-
   servaddr.sin_port = htons(atoi(argv[2]));
 
-  if (connect(fd, (SADDR *)&servaddr, SIZE) < 0) {
+  if (connect(fd, (SADDR *)&servaddr, size) < 0) {
     perror("connect");
     exit(1);
   }
 
   write(1, "Input message to send\n", 22);
-  while ((nread = read(0, buf, BUFSIZE)) > 0) {
+  while ((nread = read(0, buf, bufsize)) > 0) {
     if (write(fd, buf, nread) < 0) {
       perror("write");
       exit(1);
@@ -50,5 +49,6 @@ int main(int argc, char *argv[]) {
   }
 
   close(fd);
+  free(buf);
   exit(0);
 }
